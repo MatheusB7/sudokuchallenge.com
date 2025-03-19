@@ -18,15 +18,22 @@
             transition: background 0.3s, color 0.3s;
         }
         .dark-mode {
-            background-color: #333;
-            color: #f4f4f4;
+            background-color: #131313;
+            color: #313131;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         .grid {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
             gap: 1px;
-            max-width: 324px;
+            max-width: 350px;
             border: 2px solid black;
+            margin-top: 20px;
         }
         .cell {
             width: 36px;
@@ -42,7 +49,7 @@
             transition: background 0.2s;
         }
         .selected {
-            background-color: yellow !important;
+            background-color: rgb(54, 124, 255) !important;
         }
         .highlight {
             background-color: #d3d3d3;
@@ -61,40 +68,115 @@
             padding: 5px 10px;
             font-size: 16px;
         }
+        .lives {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .restart-btn {
+            display: none;
+            margin-top: 10px;
+            padding: 5px 10px;
+            font-size: 16px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .revert-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            font-size: 16px;
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+        }
+        .correct {
+            color: green;
+        }
+        /* Estilos para separar os blocos 3x3 */
+        .grid > .cell:nth-child(3n) {
+            border-right: 3px solid black;
+        }
+        .grid > .cell:nth-child(27n+1), 
+        .grid > .cell:nth-child(27n+9), 
+        .grid > .cell:nth-child(27n+17) {
+            border-bottom: 3px solid black;
+        }
     </style>
 </head>
 <body>
-    <h1>Sudoku Challenge</h1>
-    <button class="theme-toggle" onclick="toggleTheme()">Trocar Tema</button>
-    <div class="grid" id="sudoku-board"></div>
-    <div class="number-buttons" id="number-buttons"></div>
-    <h2>Regras do Sudoku</h2>
-    <p>Complete a grade 9x9 com números de 1 a 9 sem repetir nenhum número nas linhas, colunas e blocos 3x3.</p>
-
+    <div class="container">
+        <h1>Sudoku Challenge</h1>
+        <button class="theme-toggle" onclick="toggleTheme()">Trocar Tema</button>
+        <div class="lives" id="lives">Vidas: 3</div>
+        <div class="grid" id="sudoku-board"></div>
+        <div class="number-buttons" id="number-buttons"></div>
+        <button class="restart-btn" id="restart-btn" onclick="restartGame()">Reiniciar</button>
+        <button class="revert-btn" id="revert-btn" onclick="revertMove()">Reverter Última Jogada</button>
+        <h2>Regras do Sudoku</h2>
+        <p>Complete a grade 9x9 com números de 1 a 9 sem repetir nenhum número nas linhas, colunas e blocos 3x3.</p>
+    </div>
     <script>
         let selectedCell = null;
+        let board = Array.from({ length: 9 }, () => Array(9).fill(0));
+        let lives = 3;
+        let moveHistory = []; // Armazenar o histórico das células modificadas
+
+        // Função para gerar um tabuleiro Sudoku com números aleatórios
+        function generateBoard() {
+            let numPlaced = 0;
+            while (numPlaced < 20) { // Preencher 20 células aleatórias para o início
+                const row = Math.floor(Math.random() * 9);
+                const col = Math.floor(Math.random() * 9);
+                const num = Math.floor(Math.random() * 9) + 1;
+                
+                // Verificar se o número pode ser colocado na célula
+                if (board[row][col] === 0 && isValid(board, row, col, num)) {
+                    board[row][col] = num;
+                    numPlaced++;
+                }
+            }
+        }
+
+        // Função para verificar se o número é válido na posição (linha, coluna)
+        function isValid(board, row, col, num) {
+            // Verificar linha e coluna
+            for (let i = 0; i < 9; i++) {
+                if (board[row][i] === num || board[i][col] === num) return false;
+            }
+
+            // Verificar bloco 3x3
+            const startRow = Math.floor(row / 3) * 3;
+            const startCol = Math.floor(col / 3) * 3;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[startRow + i][startCol + j] === num) return false;
+                }
+            }
+
+            return true;
+        }
 
         function createBoard() {
-            const board = document.getElementById("sudoku-board");
+            const boardElement = document.getElementById("sudoku-board");
+            boardElement.innerHTML = ''; // Limpar o tabuleiro anterior
             for (let row = 0; row < 9; row++) {
                 for (let col = 0; col < 9; col++) {
                     const cell = document.createElement("div");
                     cell.classList.add("cell");
                     cell.dataset.row = row;
                     cell.dataset.col = col;
+                    if (board[row][col] !== 0) {
+                        cell.textContent = board[row][col];
+                        cell.classList.add("highlight");
+                    }
                     cell.onclick = () => selectCell(cell);
-                    board.appendChild(cell);
+                    boardElement.appendChild(cell);
                 }
-            }
-        }
-
-        function createNumberButtons() {
-            const container = document.getElementById("number-buttons");
-            for (let i = 1; i <= 9; i++) {
-                const button = document.createElement("button");
-                button.textContent = i;
-                button.onclick = () => placeNumber(i);
-                container.appendChild(button);
             }
         }
 
@@ -123,15 +205,76 @@
         }
 
         function placeNumber(number) {
-            if (selectedCell) {
+            if (selectedCell && selectedCell.textContent === "") {
+                const row = selectedCell.dataset.row;
+                const col = selectedCell.dataset.col;
+                const prevValue = selectedCell.textContent;
+
+                // Armazenar o valor anterior antes de mudar
+                moveHistory.push({ row, col, prevValue });
+
                 selectedCell.textContent = number;
+
+                // Verificar se o número inserido está correto
+                if (board[row][col] === number) {
+                    selectedCell.classList.add("correct");
+                    // Limpar qualquer erro anterior se o número for correto
+                    selectedCell.classList.remove("error");
+                } else {
+                    selectedCell.classList.add("error");
+                    lives--;
+                    document.getElementById("lives").textContent = `Vidas: ${lives}`;
+                    if (lives === 0) {
+                        document.getElementById("restart-btn").style.display = "block";
+                    }
+                }
             }
+        }
+
+        function revertMove() {
+            if (moveHistory.length > 0) {
+                const lastMove = moveHistory.pop();
+                const cell = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
+                cell.textContent = lastMove.prevValue;
+
+                // Atualizar vidas
+                if (lastMove.prevValue !== "") {
+                    lives++;
+                    document.getElementById("lives").textContent = `Vidas: ${lives}`;
+                }
+
+                // Limpar estilos de correção ou erro
+                cell.classList.remove("correct", "error");
+            }
+        }
+
+        function restartGame() {
+            lives = 3;
+            moveHistory = [];
+            document.getElementById("lives").textContent = `Vidas: ${lives}`;
+            document.getElementById("restart-btn").style.display = "none";
+            board = Array.from({ length: 9 }, () => Array(9).fill(0));
+            generateBoard();
+            createBoard();
         }
 
         function toggleTheme() {
             document.body.classList.toggle("dark-mode");
         }
 
+        // Função para gerar botões de números
+        function createNumberButtons() {
+            const numberButtons = document.getElementById("number-buttons");
+            for (let i = 1; i <= 9; i++) {
+                const button = document.createElement("button");
+                button.textContent = i;
+                button.onclick = () => placeNumber(i);
+                numberButtons.appendChild(button);
+            }
+        }
+
+        // Inicialização
+        generateBoard();
         createBoard();
         createNumberButtons();
     </script>
