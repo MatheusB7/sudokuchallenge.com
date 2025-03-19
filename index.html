@@ -1,270 +1,218 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sudoku Challenge</title>
+    <title>Sudoku</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             background-color: #f4f4f4;
             color: #333;
-            transition: background 0.3s, color 0.3s;
         }
-        .dark-mode {
-            background-color: #131313;
-            color: #313131;
-        }
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .grid {
+        .board {
             display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            gap: 1px;
-            max-width: 350px;
-            border: 2px solid black;
-            margin-top: 20px;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 2px;
+            margin: 20px auto;
+            width: fit-content;
+            background-color: #000;
+            padding: 5px;
+            border-radius: 8px;
         }
         .cell {
-            width: 36px;
-            height: 36px;
+            width: 50px;
+            height: 50px;
+            background-color: #fff;
+            border: 1px solid #000;
             text-align: center;
-            font-size: 18px;
-            border: 1px solid black;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 50px;
             cursor: pointer;
-            background-color: white;
-            transition: background 0.2s;
+            transition: background 0.3s;
         }
-        .selected {
-            background-color: rgb(54, 124, 255) !important;
+        .cell:hover {
+            background-color: #ddd;
         }
-        .highlight {
-            background-color: #d3d3d3;
-        }
-        .number-buttons {
-            margin-top: 10px;
-        }
-        .number-buttons button {
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-            margin: 2px;
-        }
-        .theme-toggle {
-            margin: 10px;
-            padding: 5px 10px;
-            font-size: 16px;
-        }
-        .lives {
-            font-size: 18px;
-            margin-top: 10px;
-        }
-        .restart-btn {
-            display: none;
-            margin-top: 10px;
-            padding: 5px 10px;
-            font-size: 16px;
-            background-color: red;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .revert-btn {
-            margin-top: 10px;
-            padding: 5px 10px;
-            font-size: 16px;
-            background-color: #f0ad4e;
-            color: white;
-            border: none;
-            cursor: pointer;
+        .fixed {
+            background-color: #bbb;
+            pointer-events: none;
+            font-weight: bold;
         }
         .error {
-            color: red;
+            background-color: lightcoral;
         }
-        .correct {
-            color: green;
+        .highlight {
+            background-color: #e6f7ff;
         }
-        /* Estilos para separar os blocos 3x3 */
-        .grid > .cell:nth-child(3n) {
-            border-right: 3px solid black;
+        .selected {
+            background-color: rgb(94, 158, 255);
         }
-        .grid > .cell:nth-child(27n+1), 
-        .grid > .cell:nth-child(27n+9), 
-        .grid > .cell:nth-child(27n+17) {
-            border-bottom: 3px solid black;
+        .number-buttons {
+            margin-top: 20px;
+        }
+        .number-buttons button {
+            margin: 5px;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+            transition: 0.3s;
+        }
+        .number-buttons button:hover {
+            background-color: #555;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Sudoku Challenge</h1>
-        <button class="theme-toggle" onclick="toggleTheme()">Trocar Tema</button>
-        <div class="lives" id="lives">Vidas: 3</div>
-        <div class="grid" id="sudoku-board"></div>
-        <div class="number-buttons" id="number-buttons"></div>
-        <button class="restart-btn" id="restart-btn" onclick="restartGame()">Reiniciar</button>
-        <button class="revert-btn" id="revert-btn" onclick="revertMove()">Reverter Última Jogada</button>
-        <h2>Regras do Sudoku</h2>
-        <p>Complete a grade 9x9 com números de 1 a 9 sem repetir nenhum número nas linhas, colunas e blocos 3x3.</p>
-    </div>
+    <h1>Jogo de Sudoku</h1>
+    <p>Complete a grade 9x9 com números de 1 a 9 sem repetir nenhum número nas linhas, colunas e blocos 3x3.</p>
+    <h3 id="lives">Vidas: 3</h3>
+    <div id="board" class="board"></div>
+    <div class="number-buttons" id="number-buttons"></div>
     <script>
+        const board = document.getElementById("board");
+        const livesDisplay = document.getElementById("lives");
         let selectedCell = null;
-        let board = Array.from({ length: 9 }, () => Array(9).fill(0));
         let lives = 3;
-        let moveHistory = []; // Armazenar o histórico das células modificadas
 
-        // Função para gerar um tabuleiro Sudoku com números aleatórios
-        function generateBoard() {
-            let numPlaced = 0;
-            while (numPlaced < 20) { // Preencher 20 células aleatórias para o início
-                const row = Math.floor(Math.random() * 9);
-                const col = Math.floor(Math.random() * 9);
-                const num = Math.floor(Math.random() * 9) + 1;
-                
-                // Verificar se o número pode ser colocado na célula
-                if (board[row][col] === 0 && isValid(board, row, col, num)) {
-                    board[row][col] = num;
-                    numPlaced++;
+        function generateSudoku() {
+            let grid = Array(9).fill().map(() => Array(9).fill(0));
+            function isValid(row, col, num) {
+                for (let i = 0; i < 9; i++) {
+                    if (grid[row][i] === num || grid[i][col] === num) return false;
                 }
+                let startRow = Math.floor(row / 3) * 3;
+                let startCol = Math.floor(col / 3) * 3;
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (grid[startRow + i][startCol + j] === num) return false;
+                    }
+                }
+                return true;
             }
+            function fillGrid(row = 0, col = 0) {
+                if (row === 9) return true;
+                let nextRow = col === 8 ? row + 1 : row;
+                let nextCol = (col + 1) % 9;
+                let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+                for (let num of numbers) {
+                    if (isValid(row, col, num)) {
+                        grid[row][col] = num;
+                        if (fillGrid(nextRow, nextCol)) return true;
+                        grid[row][col] = 0;
+                    }
+                }
+                return false;
+            }
+            fillGrid();
+            return grid;
         }
 
-        // Função para verificar se o número é válido na posição (linha, coluna)
-        function isValid(board, row, col, num) {
-            // Verificar linha e coluna
-            for (let i = 0; i < 9; i++) {
-                if (board[row][i] === num || board[i][col] === num) return false;
-            }
-
-            // Verificar bloco 3x3
-            const startRow = Math.floor(row / 3) * 3;
-            const startCol = Math.floor(col / 3) * 3;
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 3; j++) {
-                    if (board[startRow + i][startCol + j] === num) return false;
+        function createPuzzle(fullGrid, difficulty = 40) {
+            let puzzle = fullGrid.map(row => [...row]);
+            let removed = 0;
+            while (removed < difficulty) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                if (puzzle[row][col] !== 0) {
+                    puzzle[row][col] = 0;
+                    removed++;
                 }
             }
-
-            return true;
+            return puzzle;
         }
 
-        function createBoard() {
-            const boardElement = document.getElementById("sudoku-board");
-            boardElement.innerHTML = ''; // Limpar o tabuleiro anterior
-            for (let row = 0; row < 9; row++) {
-                for (let col = 0; col < 9; col++) {
+        function createBoard(puzzle, solution) {
+            board.innerHTML = "";
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
                     const cell = document.createElement("div");
                     cell.classList.add("cell");
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    if (board[row][col] !== 0) {
-                        cell.textContent = board[row][col];
-                        cell.classList.add("highlight");
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.textContent = puzzle[r][c] !== 0 ? puzzle[r][c] : "";
+                    if (puzzle[r][c] !== 0) {
+                        cell.classList.add("fixed");
+                    } else {
+                        cell.onclick = () => selectCell(cell);
                     }
-                    cell.onclick = () => selectCell(cell);
-                    boardElement.appendChild(cell);
+                    board.appendChild(cell);
                 }
             }
         }
 
         function selectCell(cell) {
-            if (selectedCell) selectedCell.classList.remove("selected");
-            document.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
-            
+            if (selectedCell) {
+                selectedCell.classList.remove("selected");
+            }
+        
+            removeHighlighting(); // Remove apenas os destaques antes de adicionar novos
+        
             selectedCell = cell;
-            selectedCell.classList.add("selected");
+            cell.classList.add("selected");
             highlightRelatedCells(cell);
-        }
+        }             
 
         function highlightRelatedCells(cell) {
-            const row = cell.dataset.row;
-            const col = cell.dataset.col;
-            const blockRow = Math.floor(row / 3) * 3;
-            const blockCol = Math.floor(col / 3) * 3;
-            
-            document.querySelectorAll(".cell").forEach(c => {
-                if (c.dataset.row === row || c.dataset.col === col || 
-                    (c.dataset.row >= blockRow && c.dataset.row < blockRow + 3 &&
-                     c.dataset.col >= blockCol && c.dataset.col < blockCol + 3)) {
-                    c.classList.add("highlight");
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            // Highlight the entire row
+            for (let i = 0; i < 9; i++) {
+                document.querySelector(`[data-row="${row}"][data-col="${i}"]`).classList.add("highlight");
+            }
+            // Highlight the entire column
+            for (let i = 0; i < 9; i++) {
+                document.querySelector(`[data-row="${i}"][data-col="${col}"]`).classList.add("highlight");
+            }
+            // Highlight the 3x3 block
+            const startRow = Math.floor(row / 3) * 3;
+            const startCol = Math.floor(col / 3) * 3;
+            for (let r = startRow; r < startRow + 3; r++) {
+                for (let c = startCol; c < startCol + 3; c++) {
+                    document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add("highlight");
                 }
+            }
+        }
+
+        function removeHighlighting() {
+            const cells = document.querySelectorAll(".cell");
+            cells.forEach(cell => {
+                cell.classList.remove("highlight");
             });
         }
 
-        function placeNumber(number) {
-            if (selectedCell && selectedCell.textContent === "") {
-                const row = selectedCell.dataset.row;
-                const col = selectedCell.dataset.col;
-                const prevValue = selectedCell.textContent;
-
-                // Armazenar o valor anterior antes de mudar
-                moveHistory.push({ row, col, prevValue });
-
-                selectedCell.textContent = number;
-
-                // Verificar se o número inserido está correto
-                if (board[row][col] === number) {
-                    selectedCell.classList.add("correct");
-                    // Limpar qualquer erro anterior se o número for correto
-                    selectedCell.classList.remove("error");
-                } else {
-                    selectedCell.classList.add("error");
-                    lives--;
-                    document.getElementById("lives").textContent = `Vidas: ${lives}`;
-                    if (lives === 0) {
-                        document.getElementById("restart-btn").style.display = "block";
-                    }
+        function placeNumber(num) {
+            if (!selectedCell) return;
+            const row = selectedCell.dataset.row;
+            const col = selectedCell.dataset.col;
+            if (solution[row][col] == num) {
+                selectedCell.textContent = num;
+                selectedCell.classList.remove("error");
+                selectedCell.onclick = null;
+                selectedCell.style.backgroundColor = "#fff"; // Retorna a célula ao fundo branco após a resposta correta
+                selectedCell = null;
+            } else {
+                selectedCell.classList.add("error");
+                lives--;
+                livesDisplay.textContent = `Vidas: ${lives}`;
+                if (lives === 0) {
+                    alert("Fim de jogo! Tente novamente.");
+                    location.reload();
                 }
             }
         }
 
-        function revertMove() {
-            if (moveHistory.length > 0) {
-                const lastMove = moveHistory.pop();
-                const cell = document.querySelector(`[data-row="${lastMove.row}"][data-col="${lastMove.col}"]`);
-                cell.textContent = lastMove.prevValue;
-
-                // Atualizar vidas
-                if (lastMove.prevValue !== "") {
-                    lives++;
-                    document.getElementById("lives").textContent = `Vidas: ${lives}`;
-                }
-
-                // Limpar estilos de correção ou erro
-                cell.classList.remove("correct", "error");
-            }
-        }
-
-        function restartGame() {
-            lives = 3;
-            moveHistory = [];
-            document.getElementById("lives").textContent = `Vidas: ${lives}`;
-            document.getElementById("restart-btn").style.display = "none";
-            board = Array.from({ length: 9 }, () => Array(9).fill(0));
-            generateBoard();
-            createBoard();
-        }
-
-        function toggleTheme() {
-            document.body.classList.toggle("dark-mode");
-        }
-
-        // Função para gerar botões de números
         function createNumberButtons() {
             const numberButtons = document.getElementById("number-buttons");
+            numberButtons.innerHTML = "";
             for (let i = 1; i <= 9; i++) {
                 const button = document.createElement("button");
                 button.textContent = i;
@@ -273,9 +221,10 @@
             }
         }
 
-        // Inicialização
-        generateBoard();
-        createBoard();
+        const fullGrid = generateSudoku();
+        const puzzle = createPuzzle(fullGrid);
+        const solution = fullGrid;
+        createBoard(puzzle, solution);
         createNumberButtons();
     </script>
 </body>
