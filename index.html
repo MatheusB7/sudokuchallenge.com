@@ -69,6 +69,25 @@
         .number-buttons button:hover {
             background-color: #555;
         }
+        footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #333;
+        }
+        footer a {
+            color: #333;
+            text-decoration: none;
+        }
+        #victoryMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            font-weight: bold;
+            color: green;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -77,9 +96,17 @@
     <h3 id="lives">Vidas: 3</h3>
     <div id="board" class="board"></div>
     <div class="number-buttons" id="number-buttons"></div>
+
+    <div id="victoryMessage">Victory!</div>
+
+    <footer>
+        <p>&copy; 2025 <a href="mailto:matheus@example.com">Matheus Barbosa da Silva</a>. Todos os direitos reservados.</p>
+    </footer>
+
     <script>
         const board = document.getElementById("board");
         const livesDisplay = document.getElementById("lives");
+        const victoryMessage = document.getElementById("victoryMessage");
         let selectedCell = null;
         let lives = 3;
 
@@ -154,7 +181,7 @@
                 selectedCell.classList.remove("selected");
             }
         
-            removeHighlighting(); // Remove apenas os destaques antes de adicionar novos
+            removeHighlighting();
         
             selectedCell = cell;
             cell.classList.add("selected");
@@ -164,15 +191,12 @@
         function highlightRelatedCells(cell) {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
-            // Highlight the entire row
             for (let i = 0; i < 9; i++) {
                 document.querySelector(`[data-row="${row}"][data-col="${i}"]`).classList.add("highlight");
             }
-            // Highlight the entire column
             for (let i = 0; i < 9; i++) {
                 document.querySelector(`[data-row="${i}"][data-col="${col}"]`).classList.add("highlight");
             }
-            // Highlight the 3x3 block
             const startRow = Math.floor(row / 3) * 3;
             const startCol = Math.floor(col / 3) * 3;
             for (let r = startRow; r < startRow + 3; r++) {
@@ -197,7 +221,7 @@
                 selectedCell.textContent = num;
                 selectedCell.classList.remove("error");
                 selectedCell.onclick = null;
-                selectedCell.style.backgroundColor = "#fff"; // Retorna a célula ao fundo branco após a resposta correta
+                selectedCell.style.backgroundColor = "#fff";
                 selectedCell = null;
             } else {
                 selectedCell.classList.add("error");
@@ -207,6 +231,22 @@
                     alert("Fim de jogo! Tente novamente.");
                     location.reload();
                 }
+            }
+
+            checkVictory();
+        }
+
+        function checkVictory() {
+            const cells = document.querySelectorAll(".cell");
+            let allFilledCorrectly = true;
+            cells.forEach(cell => {
+                if (!cell.textContent || parseInt(cell.textContent) !== solution[cell.dataset.row][cell.dataset.col]) {
+                    allFilledCorrectly = false;
+                }
+            });
+
+            if (allFilledCorrectly) {
+                victoryMessage.style.display = "block"; // Exibe a mensagem de vitória
             }
         }
 
