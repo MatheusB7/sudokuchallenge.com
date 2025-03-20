@@ -88,6 +88,20 @@
             color: green;
             display: none;
         }
+        #playAgainButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Inicialmente escondido */
+        }
+        #playAgainButton:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -98,6 +112,7 @@
     <div class="number-buttons" id="number-buttons"></div>
 
     <div id="victoryMessage">Victory!</div>
+    <button id="playAgainButton" onclick="restartGame()">Jogar Novamente</button>
 
     <footer>
         <p>&copy; 2025 <a href="mailto:matheus@example.com">Matheus Barbosa da Silva</a>. Todos os direitos reservados.</p>
@@ -107,6 +122,7 @@
         const board = document.getElementById("board");
         const livesDisplay = document.getElementById("lives");
         const victoryMessage = document.getElementById("victoryMessage");
+        const playAgainButton = document.getElementById("playAgainButton");
         let selectedCell = null;
         let lives = 3;
 
@@ -247,6 +263,7 @@
 
             if (allFilledCorrectly) {
                 victoryMessage.style.display = "block"; // Exibe a mensagem de vitória
+                playAgainButton.style.display = "inline-block"; // Exibe o botão de jogar novamente
             }
         }
 
@@ -259,6 +276,19 @@
                 button.onclick = () => placeNumber(i);
                 numberButtons.appendChild(button);
             }
+        }
+
+        function restartGame() {
+            // Reinicia o jogo
+            lives = 3;
+            livesDisplay.textContent = `Vidas: ${lives}`;
+            const fullGrid = generateSudoku();
+            const puzzle = createPuzzle(fullGrid);
+            const solution = fullGrid;
+            createBoard(puzzle, solution);
+            createNumberButtons();
+            victoryMessage.style.display = "none"; // Esconde a mensagem de vitória
+            playAgainButton.style.display = "none"; // Esconde o botão de jogar novamente
         }
 
         const fullGrid = generateSudoku();
